@@ -1,5 +1,3 @@
-require 'ruby-debug'
-
 require 'cgi'
 require 'sinatra'
 require 'gollum'
