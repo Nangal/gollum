@@ -1,3 +1,5 @@
+require 'ruby-debug'
+
 require 'cgi'
 require 'sinatra'
 require 'gollum'
@@ -282,6 +284,27 @@ module Precious
       mustache :compare
     end
 
+    get %r{
+      /compare/ # match any URL beginning with /compare/
+      ([^.]+)   # match the first SHA1
+      \.{2,3}   # match .. or ...
+      (.+)      # match the second SHA1
+    }x do |start_version, end_version|
+      @versions = [start_version, end_version]
+      wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
+      diffs = wiki.repo.diff(@versions.first, @versions.last)
+      @pages = []
+
+      for diff in diffs
+        wikip = wiki_page(Gollum::Page.valid_page_name?(diff.a_path))
+        @pages << OpenStruct.new(
+            :page => wikip.page,
+            :diff => diff
+        )
+      end
+      mustache :compareall
+    end
+
     get %r{^/(javascript|css|images)} do
       halt 404
     end
@@ -318,7 +341,7 @@ module Precious
       )?      # end the optional non-capturing group
     }x do |path|
       @path        = extract_path(path) if path
-      wiki_options = settings.wiki_options.merge({ :page_file_dir => @path })
+      wiki_options = x.wiki_options.merge({ :page_file_dir => @path })
       wiki         = Gollum::Wiki.new(settings.gollum_path, wiki_options)
       @results     = wiki.pages
       @ref         = wiki.ref
